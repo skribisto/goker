@@ -1,78 +1,103 @@
 package cards
 
 import (
+	"errors"
 	"math/rand"
 	"strconv"
-	"strings"
 	"time"
 )
 
+//const SUITS = [4]string{"spades", "hearts", "clubs", "diamonds"}
+
 type Card struct {
-	id int
-    suit string
+	Value uint8 // 2 to 14
+	Suit  uint8 // 0 to 3, resp. clubs diamonds hearts spades
 }
 
-//TODO implement ascii art
-//TODO manage suits
+type Deck []Card
+
+type Board []Card
+
+type Hand []Card //2 for texas hold'em, but can be different, e.g. Omaha
+
 func (c Card) String() string {
-	switch c.id {
+	var stringSuit string
+	var stringVal string
+
+	switch c.Value {
 	case 11:
-		return "V"
+		stringVal = "V"
 	case 12:
-		return "D"
+		stringVal = "D"
 	case 13:
-		return "R"
-	case 1:
-		return "A"
+		stringVal = "R"
+	case 14:
+		stringVal = "A"
 	default:
-		return strconv.Itoa(c.id)
+		stringVal = strconv.Itoa(int((c.Value)))
 	}
+
+	switch c.Suit {
+	case 1:
+		stringSuit = "♣"
+	case 2:
+		stringSuit = "♦"
+	case 3:
+		stringSuit = "♥"
+	case 0:
+		stringSuit = "♠"
+	default:
+		stringSuit = "XX"
+	}
+	return string(stringVal + stringSuit)
 }
 
-type Hand struct {
-	cards []Card
+func (d *Deck) New() Deck {
+	var val uint8
+	var suit uint8
+	i := 0
+
+	for suit = 0; suit < 4; suit++ {
+		for val = 2; val <= 14; val++ {
+			c := Card{
+				Value: val,
+				Suit:  suit,
+			}
+			*d = append(*d, c)
+			i++
+		}
+	}
+	//Always shuffle ?
+	//log.Print("Before shuffle", d)
+	d.Shuffle()
+	return *d
 }
 
+func (d *Deck) Shuffle() {
+	rand.Seed(time.Now().UnixNano())
+	rand.Shuffle(len(*d), func(i, j int) { (*d)[i], (*d)[j] = (*d)[j], (*d)[i] })
+}
+
+func (d *Deck) Deal() (Card, error) {
+	if len(*d) == 0 {
+		return Card{}, errors.New("out of cards") // Return an empty card and false if the deck is empty
+	}
+	// Get the next card to be dealt
+	card := (*d)[0]
+
+	// Remove the dealt card from the deck
+	*d = (*d)[1:]
+
+	return card, nil
+}
+
+/*
 func (h *Hand) String() string {
-	s := make([]string, len(h.cards))
-	for i, card := range h.cards {
+	s := make([]string, len(h.Cards))
+	for i, card := range h.Cards {
 		s[i] = card.String()
 		//s[i] = fmt.Sprint(card)
 	}
 	return strings.Join(s, " ")
 }
-
-//Adapt to non-blackjack rules
-func (h *Hand) Score() (totalScore int) {
-	numberOfAces := 0
-	for _, card := range h.cards {
-		var cardScore int
-		if card.id == 1 {
-			cardScore = 11
-			numberOfAces++
-		} else if card.id < 10 {
-			cardScore = card.id
-		} else {
-			cardScore = 10
-		}
-		totalScore += cardScore
-	}
-
-	for numberOfAces > 0 && totalScore > 21 {
-		totalScore -= 10 //In case of multiple Aces, consider the minimal amount as ones
-		numberOfAces--
-	}
-
-	return
-}
-
-//TODO create deck constraint (deal out of a deck / group of deck
-func (h *Hand) DealRandom(n int) {
-	rand.Seed(time.Now().UnixNano())
-	for i := 0; i < n; i++ {
-		randomId := rand.Intn(12)
-		randomId++
-		c := Card{randomId,""}
-		h.cards = append(h.cards, c)
-	}
-}
+*/

@@ -1,3 +1,3 @@
-module poker
+module goker
 
 go 1.18

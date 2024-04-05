@@ -1,24 +1,45 @@
 package main
 
 import (
-	"bytes"
+	"goker/cards"
 	"log"
-	"poker/cards"
+	"os"
 )
 
+/*
 func deal(players int) []cards.Hand {
 	hands := make([]cards.Hand, players, players)
 	for p := 0; p < players; p++ {
-		hands[p].DealRandom(2)
+		hands[p].Deal(2)
 	}
 	return hands
 }
-
-func isDead(h cards.Hand) bool {
-	return h.Score() > 21
-}
+*/
 
 func main() {
+	logFile, err := os.OpenFile("logs.txt", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	log.SetOutput(logFile)
+
+	log.Println("#####################################")
+	log.Println("############# New Game   ############")
+	log.Println("#####################################")
+
+	var d cards.Deck
+	d = d.New()
+
+	// Deal cards from the deck
+	for i := 0; i < 2; i++ {
+		card, err := d.Deal()
+		if err != nil {
+			log.Fatalln(err)
+		}
+		log.Println("Dealt card: ", card)
+	}
+
 	/*
 		var answer string
 		rageQuit := false
@@ -103,9 +124,5 @@ func main() {
 			}
 		}
 	*/
-	var buf bytes.Buffer
-	var logger = log.New(&buf, "logger: ", log.Lshortfile)
-
-	logger.Print("Hello, log file!")
 
 }

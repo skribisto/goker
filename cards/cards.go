@@ -4,7 +4,6 @@ import (
 	"errors"
 	"math/rand"
 	"strconv"
-	"time"
 )
 
 //const SUITS = [4]string{"spades", "hearts", "clubs", "diamonds"}
@@ -15,10 +14,7 @@ type Card struct {
 }
 
 type Deck []Card
-
 type Board []Card
-
-type Hand []Card //2 for texas hold'em, but can be different, e.g. Omaha
 
 func (c Card) String() string {
 	var stringSuit string
@@ -49,12 +45,13 @@ func (c Card) String() string {
 	default:
 		stringSuit = "XX"
 	}
-	return string(stringVal + stringSuit)
+	return stringVal + stringSuit
 }
 
-func (d *Deck) New() Deck {
+func NewDeck() *Deck {
 	var val uint8
 	var suit uint8
+	d := new(Deck)
 	i := 0
 
 	for suit = 0; suit < 4; suit++ {
@@ -70,11 +67,12 @@ func (d *Deck) New() Deck {
 	//Always shuffle ?
 	//log.Print("Before shuffle", d)
 	d.Shuffle()
-	return *d
+	return d
 }
 
 func (d *Deck) Shuffle() {
-	rand.Seed(time.Now().UnixNano())
+	//rand.Seed(time.Now().UnixNano())
+	rand.Seed(2)
 	rand.Shuffle(len(*d), func(i, j int) { (*d)[i], (*d)[j] = (*d)[j], (*d)[i] })
 }
 

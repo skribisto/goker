@@ -1,10 +1,7 @@
 package main
 
-import (
-	"goker/cards"
-	"goker/scores"
-	"log"
-	"os"
+	"goker/pkg/cards"
+	"goker/pkg/log"
 )
 
 /*
@@ -18,70 +15,25 @@ func deal(players int) []cards.Hand {
 */
 
 func main() {
-	logFile, err := os.OpenFile("logs.txt", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
+	//log.Info("#####################################")
+	log.Info("############# New Game   ############")
+	//log.Info("#####################################")
+
+	d, err := cards.NewDeck()
 	if err != nil {
-		log.Fatal(err)
+		log.Criticalf("could not instantiate NewDeck %w", err)
 	}
 
-	log.SetOutput(logFile)
+	log.Debugf("%v", d)
 
-	//log.Println("#####################################")
-	log.Println("############# New Game   ############")
-	//log.Println("#####################################")
+	var i = 0
 
-	d := cards.NewDeck()
-
-	var board0 cards.Board
-	var board1 cards.Board
-	var board2 cards.Board
-
-	// Deal cards from the deck
-	for i := 0; i < 5; i++ {
-		card, err := d.Deal()
-		if err != nil {
-			log.Fatalln(err)
-		}
-		board0 = append(board0, card)
-	}
-	log.Println("Dealt board cards: ", board0)
-	for i := 0; i < 2; i++ {
-		card, err := d.Deal()
-		if err != nil {
-			log.Fatalln(err)
-		}
-		board1 = append(board1, card)
-	}
-	log.Println("Dealt p1 cards: ", board1)
-	for i := 0; i < 2; i++ {
-		card, err := d.Deal()
-		if err != nil {
-			log.Fatalln(err)
-		}
-		board2 = append(board2, card)
-	}
-	log.Println("Dealt p2 card: ", board2)
-	board1 = append(board1, board0...)
-	board2 = append(board2, board0...)
-
-	sc1, err := scores.Score(board1)
-	if err != nil {
-		log.Fatalln(err)
-	}
-	sc2, err := scores.Score(board2)
-	if err != nil {
-		log.Fatalln(err)
-	}
-
-	i, err := scores.CompareScoreCards(sc1, sc2)
-	if err != nil {
-		log.Fatalln(err)
-	}
 	if i == -1 {
-		log.Println("player 2 won")
+		log.Info("player 2 won")
 	} else if i == 1 {
-		log.Println("player 1 won")
+		log.Info("player 1 won")
 	} else {
-		log.Println("ex aequo")
+		log.Info("ex aequo")
 	}
 
 	/*

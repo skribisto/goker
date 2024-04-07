@@ -2,8 +2,8 @@ package scores
 
 import (
 	"errors"
-	"fmt"
 	"goker/cards"
+	"goker/pkg/log"
 	"sort"
 )
 
@@ -55,7 +55,7 @@ func Score(board cards.Board) (*ScoreCard, error) {
 		return nil, err
 	}
 
-	fmt.Println("sc at the end of Score", sc)
+	log.Debugf("sc at the end of Score %v", sc)
 
 	return sc, nil
 }
@@ -347,7 +347,7 @@ func (sc *ScoreCard) checkXOfAKind() error {
 		indices []uint8
 		value   uint8
 	}
-	//fmt.Println("board début du check xoak", board)
+	log.Debugf("board at start of checkXOfAKind %v", board)
 	/* Function that keeps track of occurences of int in a slice */
 	countMap := make(map[uint8]oakCount)
 
@@ -367,8 +367,8 @@ func (sc *ScoreCard) checkXOfAKind() error {
 	sort.SliceStable(sortedCountMapKeys, func(i, j int) bool {
 		return countMap[sortedCountMapKeys[i]].value > countMap[sortedCountMapKeys[j]].value
 	})
-	//fmt.Println("oakCount", countMap)
-	//fmt.Println("oakCount", sortedCountMapKeys)
+	log.Debugf("countMap containing oakCount %v", countMap)
+	log.Debugf("sortedCountMapKeys %v", sortedCountMapKeys)
 
 	//Check xoak counters and fill scoreCard accordingly
 	for _, sortedCountMapKey := range sortedCountMapKeys {
@@ -392,30 +392,30 @@ func (sc *ScoreCard) checkXOfAKind() error {
 				break
 			}
 		} else if oakCount.count == 2 && len(sc.Four) == 0 {
-			//fmt.Println("oakCount of pair", oakCount)
-			//fmt.Println("sc pair", sc)
+			//log.Debug("oakCount of pair", oakCount)
+			//log.Debug("sc pair", sc)
 			if len(sc.Pair) > 0 {
 				if len(sc.DoublePair) > 0 {
 					//Already found higher double pair, do nothing
 					//we need to split it to have a double pair + high card
 					//Don't forget board is ordered
 					sc.HighCard = append(sc.HighCard, oakCount.indices[0])
-					//fmt.Println("Already found double pair", sc)
+					//log.Debug("Already found double pair", sc)
 					break
 				}
 				//Found lower pair
 				sc.DoublePair = oakCount.indices
-				//fmt.Println("found double pair", sc)
+				//log.Debug("found double pair", sc)
 				continue // already 4 cards out of 5
 			}
-			//fmt.Println("found pair", sc)
+			//log.Debug("found pair", sc)
 			sc.Pair = oakCount.indices
 		} else if oakCount.count == 1 {
 			//fill HighCard in desc order of value because board is ordered
 			sc.HighCard = append(sc.HighCard, oakCount.indices[0])
 		}
 	}
-	//fmt.Println("sc début du check xoak", sc)
+	//log.Debug("sc début du check xoak", sc)
 
 	return nil
 }

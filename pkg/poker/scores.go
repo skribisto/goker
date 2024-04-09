@@ -1,14 +1,13 @@
 package scores
 
 import (
-	"errors"
-	"goker/cards"
+	"goker/pkg/cards"
 	"goker/pkg/log"
 	"sort"
 )
 
 type ScoreCard struct {
-	*cards.Board
+	Board         *[]cards.Card
 	StraightFlush bool
 	Four          []uint8 // 4 of a kind, aka OAK4
 	FullHouse     bool
@@ -20,7 +19,7 @@ type ScoreCard struct {
 	HighCard      []uint8 //may need up to 7 to discriminate
 }
 
-func Score(board cards.Board) (*ScoreCard, error) {
+func Score(board []cards.Card) (*ScoreCard, error) {
 	//Create and fill a new ScoreCard
 	sc := new(ScoreCard)
 
@@ -28,7 +27,7 @@ func Score(board cards.Board) (*ScoreCard, error) {
 	sc.Board = &board
 
 	if len(board) > 7 || len(board) < 2 {
-		return nil, errors.New("not enough (<2) or too much (>7) cards to evaluate score from")
+		return nil, log.Error("not enough (<2) or too much (>7) cards to evaluate score from")
 	}
 
 	//sort by value desc
@@ -60,17 +59,18 @@ func Score(board cards.Board) (*ScoreCard, error) {
 	return sc, nil
 }
 
+//1 means sc1 wins, -1 means sc1 loose, 0 means tie
 func CompareScoreCards(sc1, sc2 *ScoreCard) (int, error) {
 	board1 := *sc1.Board
 	board2 := *sc2.Board
 
 	if sc1.StraightFlush {
 		if len(sc1.Straight) != 5 {
-			return 0, errors.New("flag StraightFlush but no 5 Straight value in scoreCard 1")
+			return 0, log.Error("flag StraightFlush but no 5 Straight value in scoreCard 1")
 		}
 		if sc2.StraightFlush {
 			if len(sc2.Straight) != 5 {
-				return 0, errors.New("flag StraightFlush but no 5 Straight value in scoreCard 2")
+				return 0, log.Error("flag StraightFlush but no 5 Straight value in scoreCard 2")
 			}
 			if board1[sc1.Straight[0]].Value < board2[sc2.Straight[0]].Value {
 				return -1, nil
@@ -81,20 +81,20 @@ func CompareScoreCards(sc1, sc2 *ScoreCard) (int, error) {
 		return 1, nil
 	} else if len(sc1.Four) > 0 {
 		if len(sc1.Four) != 4 {
-			return 0, errors.New("no Four value in scoreCard 1")
+			return 0, log.Error("no Four value in scoreCard 1")
 		}
 		if sc2.StraightFlush {
 			return -1, nil
 		}
 		if len(sc2.Four) > 0 {
 			if len(sc2.Four) != 4 {
-				return 0, errors.New("no Four value in scoreCard 2")
+				return 0, log.Error("no Four value in scoreCard 2")
 			}
 			if board1[sc1.Four[0]].Value < board2[sc2.Four[0]].Value {
 				return -1, nil
 			} else if board1[sc1.Four[0]].Value == board2[sc2.Four[0]].Value {
 				if len(sc1.HighCard) < 1 || len(sc2.HighCard) < 1 {
-					return 0, errors.New("no HighCard value in scoreCard 1 or 2")
+					return 0, log.Error("no HighCard value in scoreCard 1 or 2")
 				}
 				if board1[sc1.HighCard[0]].Value < board2[sc2.HighCard[0]].Value {
 					return -1, nil
@@ -106,14 +106,14 @@ func CompareScoreCards(sc1, sc2 *ScoreCard) (int, error) {
 		return 1, nil
 	} else if sc1.FullHouse {
 		if len(sc1.Three) != 3 || len(sc1.Pair) != 2 {
-			return 0, errors.New("no 3 Three or 2 Pair value in scoreCard 1")
+			return 0, log.Error("no 3 Three or 2 Pair value in scoreCard 1")
 		}
 		if sc2.StraightFlush || len(sc2.Four) > 0 {
 			return -1, nil
 		}
 		if sc2.FullHouse {
 			if len(sc2.Three) != 3 || len(sc2.Pair) != 2 {
-				return 0, errors.New("no 3 Three or 2 Pair value in scoreCard 2")
+				return 0, log.Error("no 3 Three or 2 Pair value in scoreCard 2")
 			}
 			if board1[sc1.Three[0]].Value < board2[sc2.Three[0]].Value {
 				return -1, nil
@@ -128,14 +128,14 @@ func CompareScoreCards(sc1, sc2 *ScoreCard) (int, error) {
 		return 1, nil
 	} else if len(sc1.Flush) > 0 {
 		if len(sc1.Flush) != 5 {
-			return 0, errors.New("no 5 Flush value in scoreCard 1")
+			return 0, log.Error("no 5 Flush value in scoreCard 1")
 		}
 		if sc2.StraightFlush || len(sc2.Four) > 0 || sc2.FullHouse {
 			return -1, nil
 		}
 		if len(sc2.Flush) > 0 {
 			if len(sc2.Flush) != 5 {
-				return 0, errors.New("no 5 Flush value in scoreCard 2")
+				return 0, log.Error("no 5 Flush value in scoreCard 2")
 			}
 			for i := range sc1.Flush {
 				//board is always sorted
@@ -150,14 +150,14 @@ func CompareScoreCards(sc1, sc2 *ScoreCard) (int, error) {
 		return 1, nil
 	} else if len(sc1.Straight) > 0 {
 		if len(sc1.Straight) != 5 {
-			return 0, errors.New("no 5 Straight value in scoreCard 1")
+			return 0, log.Error("no 5 Straight value in scoreCard 1")
 		}
 		if sc2.StraightFlush || len(sc2.Four) > 0 || sc2.FullHouse || len(sc2.Flush) > 0 {
 			return -1, nil
 		}
 		if len(sc2.Straight) > 0 {
 			if len(sc2.Straight) != 5 {
-				return 0, errors.New("no 5 Straight value in scoreCard 2")
+				return 0, log.Error("no 5 Straight value in scoreCard 2")
 			}
 			if board1[sc1.Straight[0]].Value < board2[sc2.Straight[0]].Value {
 				return -1, nil
@@ -169,20 +169,20 @@ func CompareScoreCards(sc1, sc2 *ScoreCard) (int, error) {
 		return 1, nil
 	} else if len(sc1.Three) > 0 {
 		if len(sc1.Three) != 3 {
-			return 0, errors.New("no Three value in scoreCard 1")
+			return 0, log.Error("no Three value in scoreCard 1")
 		}
 		if sc2.StraightFlush || len(sc2.Four) > 0 || sc2.FullHouse || len(sc2.Flush) > 0 || len(sc2.Straight) > 0 {
 			return -1, nil
 		}
 		if len(sc2.Three) > 0 {
 			if len(sc2.Three) != 3 {
-				return 0, errors.New("no Three value in scoreCard 2")
+				return 0, log.Error("no Three value in scoreCard 2")
 			}
 			if board1[sc1.Three[0]].Value < board2[sc2.Three[0]].Value {
 				return -1, nil
 			} else if board1[sc1.Three[0]].Value == board2[sc2.Three[0]].Value {
 				if len(sc1.HighCard) < 2 || len(sc2.HighCard) < 2 {
-					return 0, errors.New("no (enough) HighCard value in scoreCard 1 or 2")
+					return 0, log.Error("no (enough) HighCard value in scoreCard 1 or 2")
 				}
 				for i := range sc1.HighCard[:2] {
 					if board1[i].Value < board2[i].Value {
@@ -197,14 +197,14 @@ func CompareScoreCards(sc1, sc2 *ScoreCard) (int, error) {
 		return 1, nil
 	} else if len(sc1.DoublePair) > 0 {
 		if len(sc1.DoublePair) != 2 || len(sc1.Pair) != 2 {
-			return 0, errors.New("no 2x Pair value in scoreCard 1")
+			return 0, log.Error("no 2x Pair value in scoreCard 1")
 		}
 		if sc2.StraightFlush || len(sc2.Four) > 0 || sc2.FullHouse || len(sc2.Flush) > 0 || len(sc2.Straight) > 0 || len(sc2.Three) > 0 {
 			return -1, nil
 		}
 		if len(sc2.DoublePair) > 0 {
 			if len(sc2.DoublePair) != 2 || len(sc2.Pair) != 2 {
-				return 0, errors.New("no 2x Pair value in scoreCard 2")
+				return 0, log.Error("no 2x Pair value in scoreCard 2")
 			}
 			if board1[sc1.Pair[0]].Value < board2[sc2.Pair[0]].Value {
 				return -1, nil
@@ -216,7 +216,7 @@ func CompareScoreCards(sc1, sc2 *ScoreCard) (int, error) {
 				}
 				//if same double pair, check high card
 				if len(sc1.HighCard) < 1 || len(sc2.HighCard) < 1 {
-					return 0, errors.New("no HighCard value in scoreCard 1 or 2")
+					return 0, log.Error("no HighCard value in scoreCard 1 or 2")
 				}
 				if board1[sc1.HighCard[0]].Value < board2[sc2.HighCard[0]].Value {
 					return -1, nil
@@ -228,20 +228,20 @@ func CompareScoreCards(sc1, sc2 *ScoreCard) (int, error) {
 		return 1, nil
 	} else if len(sc1.Pair) > 0 {
 		if len(sc1.Pair) != 2 {
-			return 0, errors.New("no Pair value in scoreCard 1")
+			return 0, log.Error("no Pair value in scoreCard 1")
 		}
 		if sc2.StraightFlush || len(sc2.Four) > 0 || sc2.FullHouse || len(sc2.Flush) > 0 || len(sc2.Straight) > 0 || len(sc2.Three) > 0 || len(sc2.DoublePair) > 0 {
 			return -1, nil
 		}
 		if len(sc2.Pair) > 0 {
 			if len(sc2.Pair) != 2 {
-				return 0, errors.New("no Pair value in scoreCard 2")
+				return 0, log.Error("no Pair value in scoreCard 2")
 			}
 			if board1[sc1.Pair[0]].Value < board2[sc2.Pair[0]].Value {
 				return -1, nil
 			} else if board1[sc1.Pair[0]].Value == board2[sc2.Pair[0]].Value {
 				if len(sc1.HighCard) < 3 || len(sc2.HighCard) < 3 {
-					return 0, errors.New("no (enough) HighCard value in scoreCard 1 or 2")
+					return 0, log.Error("no (enough) HighCard value in scoreCard 1 or 2")
 				}
 				for i := range sc1.HighCard[:3] {
 					//board is always sorted
@@ -262,7 +262,7 @@ func CompareScoreCards(sc1, sc2 *ScoreCard) (int, error) {
 		return -1, nil
 	}
 	if len(sc1.HighCard) != 5 || len(sc2.HighCard) != 5 {
-		return 0, errors.New("no (enough) HighCard value in scoreCard 1 or 2")
+		return 0, log.Error("no (enough) HighCard value in scoreCard 1 or 2")
 	}
 	for i := range sc1.HighCard {
 		//board is always sorted

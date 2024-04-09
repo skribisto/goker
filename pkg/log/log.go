@@ -1,6 +1,8 @@
 package log
 
 import (
+	"errors"
+	"fmt"
 	"log"
 	"os"
 )
@@ -64,12 +66,21 @@ func Warnf(format string, values ...interface{}) {
 	}
 }
 func Critical(msg string) {
-	if MinLevel <= CRITICAL {
-		Logger.Print("[" + levels[CRITICAL] + "]  " + msg)
-	}
+	Logger.Print("[" + levels[CRITICAL] + "]  " + msg)
 }
 func Criticalf(format string, values ...interface{}) {
-	if MinLevel <= CRITICAL {
-		Logger.Printf("["+levels[CRITICAL]+"]  "+format, values...)
-	}
+	Logger.Printf("["+levels[CRITICAL]+"]  "+format, values...)
+}
+func Fatal(msg string) {
+	Logger.Fatal("[" + levels[CRITICAL] + "]  " + msg)
+}
+func Fatalf(format string, values ...interface{}) {
+	Logger.Fatalf("["+levels[CRITICAL]+"]  "+format, values...)
+}
+func Error(msg string) error {
+	return errors.New(msg)
+}
+func Errorf(format string, values ...interface{}) error {
+	//Is there an easy way not to use fmt here ? only use ...
+	return fmt.Errorf(format, values...)
 }

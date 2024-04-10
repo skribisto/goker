@@ -282,18 +282,19 @@ func (sc *ScoreCard) checkStraight() error {
 	board := *(sc.Board)
 	var straightCards []uint8
 
-	for i := 1; i < len(board); i++ {
+	for i := range board {
 		if enoughRoomLeft && len(board)-i < 5 {
 			enoughRoomLeft = false
 		}
-		if board[i].Value != board[i-1].Value {
+		if i < len(board)-1 && board[i].Value == board[i+1].Value {
 			//is okay, skip this one
 			continue
-		} else if board[i].Value != board[i-1].Value-1 {
+		} else if i < len(board)-1 && board[i].Value != board[i+1].Value+1 {
 			if !enoughRoomLeft {
 				return nil
 			}
-			straightCards = nil
+			straightCards = []uint8{}
+			continue
 		}
 		straightCards = append(straightCards, uint8(i))
 
@@ -302,7 +303,10 @@ func (sc *ScoreCard) checkStraight() error {
 		}
 	}
 
-	sc.Straight = straightCards
+	if len(straightCards) != 5 {
+		return log.Error("not 5 cards in Straight count")
+	}
+
 	return nil
 }
 
@@ -315,21 +319,24 @@ func (sc *ScoreCard) checkFlush() error {
 	enoughRoomLeft := true
 	var flushCards []uint8
 
-	for i := 1; i < len(board); i++ {
+	for i := range board {
 		if enoughRoomLeft && len(board)-i < 5 {
 			enoughRoomLeft = false
 		}
-		if board[i].Suit != board[i-1].Suit {
+		if i < len(board)-1 && board[i].Suit != board[i+1].Suit {
 			if !enoughRoomLeft {
 				return nil
 			}
-			flushCards = nil //reset
+			flushCards = []uint8{} //reset
 		}
 		flushCards = append(flushCards, uint8(i))
 
 		if len(flushCards) == 5 {
 			break
 		}
+	}
+	if len(flushCards) != 5 {
+		return log.Error("no 5 cards in Flush count")
 	}
 
 	sc.Flush = flushCards

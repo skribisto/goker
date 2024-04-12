@@ -19,6 +19,60 @@ type ScoreCard struct {
 	HighCard      []uint8 //may need up to 7 to discriminate
 }
 
+func (sc *ScoreCard) String() string {
+	winCards := ""
+	if sc.StraightFlush {
+		return "Straight Flush" + string(sc.Flush)
+	} else if len(sc.Four) != 0 {
+		for _, i := range sc.Four {
+			winCards += (*sc.Board)[i].String() + " "
+		}
+		return "Four of a kind: " + winCards + " " + (*sc.Board)[sc.HighCard[0]].String()
+	} else if sc.FullHouse {
+		for _, i := range sc.Three {
+			winCards += (*sc.Board)[i].String() + " "
+		}
+		for _, i := range sc.Pair {
+			winCards += (*sc.Board)[i].String() + " "
+		}
+		return "Full House: " + winCards
+	} else if len(sc.Flush) != 0 {
+		for _, i := range sc.Flush {
+			winCards += (*sc.Board)[i].String() + " "
+		}
+		return "Flush:  " + winCards
+	} else if len(sc.Straight) != 0 {
+		for _, i := range sc.Straight {
+			winCards += (*sc.Board)[i].String() + " "
+		}
+		return "Straight:  " + winCards
+	} else if len(sc.Three) != 0 {
+		for _, i := range sc.Three {
+			winCards += (*sc.Board)[i].String() + " "
+		}
+		return "Three of a kind: " + winCards + " " + (*sc.Board)[sc.HighCard[0]].String() + " " + (*sc.Board)[sc.HighCard[1]].String()
+	} else if len(sc.DoublePair) != 0 {
+		for _, i := range sc.Pair {
+			winCards += (*sc.Board)[i].String() + " "
+		}
+		for _, i := range sc.DoublePair {
+			winCards += (*sc.Board)[i].String() + " "
+		}
+		return "Double Pair: " + winCards + " " + (*sc.Board)[sc.HighCard[0]].String()
+	} else if len(sc.Pair) > 0 {
+		for _, i := range sc.Pair {
+			winCards += (*sc.Board)[i].String() + " "
+		}
+		return "Pair: " + winCards + " " + (*sc.Board)[sc.HighCard[0]].String() + " " + (*sc.Board)[sc.HighCard[1]].String() + " " + (*sc.Board)[sc.HighCard[2]].String()
+	} else if len(sc.HighCard) > 0 {
+		for _, i := range sc.HighCard {
+			winCards += (*sc.Board)[i].String() + " "
+		}
+		return "High card: " + winCards
+	}
+	return winCards
+}
+
 func Score(board []cards.Card) (*ScoreCard, error) {
 	//Create and fill a new ScoreCard
 	sc := new(ScoreCard)
@@ -39,13 +93,13 @@ func Score(board []cards.Card) (*ScoreCard, error) {
 	if err != nil {
 		return nil, err
 	}
-	log.Debugf("DEBUG SC checkStraight GOT : %v", sc)
+	//log.Debugf("SC checkStraight GOT : %#v", sc)
 
 	err = sc.checkFlush()
 	if err != nil {
 		return nil, err
 	}
-	log.Debugf("DEBUG SC checkFlush GOT : %v", sc)
+	//log.Debugf("SC checkFlush GOT : %#v", sc)
 
 	if len(sc.Straight) > 0 && len(sc.Flush) > 0 {
 		sc.StraightFlush = true
@@ -59,7 +113,7 @@ func Score(board []cards.Card) (*ScoreCard, error) {
 		}
 	}
 
-	log.Debugf("sc at the end of Score %v", sc)
+	log.Debugf("sc at the end of Score %#v", sc)
 
 	return sc, nil
 }
@@ -321,10 +375,10 @@ func (sc *ScoreCard) checkFlush() error {
 	countCardsBySuit := make(map[uint8][]uint8, 4) //4 suits
 
 	for position, card := range board {
-		log.Debugf("Card position: %v, suit: %v, value: %v", position, card.Suit, card.Value)
+		//log.Debugf("Card position: %v, suit: %v, value: %v", position, card.Suit, card.Value)
 		countCardsBySuit[card.Suit] = append(countCardsBySuit[card.Suit], uint8(position))
 	}
-	log.Debugf("countCardsBySuit: %v", countCardsBySuit)
+	//log.Debugf("countCardsBySuit: %v", countCardsBySuit)
 
 	var suit uint8
 	for suit = 0; suit < 4; suit++ {
@@ -368,8 +422,8 @@ func (sc *ScoreCard) checkXOfAKind() error {
 	sort.SliceStable(sortedCountMapKeys, func(i, j int) bool {
 		return countMap[sortedCountMapKeys[i]].value > countMap[sortedCountMapKeys[j]].value
 	})
-	log.Debugf("countMap containing oakCount %v", countMap)
-	log.Debugf("sortedCountMapKeys %v", sortedCountMapKeys)
+	//log.Debugf("countMap containing oakCount %v", countMap)
+	//log.Debugf("sortedCountMapKeys %v", sortedCountMapKeys)
 
 	//Check xoak counters and fill scoreCard accordingly
 	for _, sortedCountMapKey := range sortedCountMapKeys {
@@ -395,24 +449,24 @@ func (sc *ScoreCard) checkXOfAKind() error {
 				break
 			}
 		} else if oakCount.count == 2 && len(sc.Four) == 0 {
-			//log.Debug("oakCount of pair", oakCount)
-			//log.Debug("sc pair", sc)
+			//log.Debugf("oakCount of pair %#v", oakCount)
+			//log.Debugf("sc pair before %v", sc.Pair)
 			if len(sc.Pair) > 0 {
 				if len(sc.DoublePair) > 0 {
 					//Already found higher double pair, do nothing
 					//we need to split it to have a double pair + high card
 					//Don't forget board is ordered
 					sc.HighCard = append(sc.HighCard, oakCount.indices[0])
-					//log.Debug("Already found double pair", sc)
+					log.Debugf("Already found double pair %#v", sc)
 					break
 				}
 				//Found lower pair
 				sc.DoublePair = oakCount.indices
-				//log.Debug("found double pair", sc)
+				log.Debugf("found double pair %v", sc.DoublePair)
 				continue // already 4 cards out of 5
 			}
-			//log.Debug("found pair", sc)
 			sc.Pair = oakCount.indices
+			//log.Debugf("found pair %#v", sc.Pair)
 
 			//this pair might trigger a fullHouse
 			if len(sc.Three) > 0 {
@@ -425,7 +479,7 @@ func (sc *ScoreCard) checkXOfAKind() error {
 			sc.HighCard = append(sc.HighCard, oakCount.indices[0])
 		}
 	}
-	//log.Debug("sc début du check xoak", sc)
+	//log.Debugf("sc début du check xoak %#v", sc)
 
 	return nil
 }

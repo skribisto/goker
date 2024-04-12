@@ -12,6 +12,7 @@ type scoreTests struct {
 	expectedScoreCard ScoreCard
 }
 
+//boards needs to be ordered
 var testBoards = []scoreTests{
 	{
 		name: "StraightFlush1",
@@ -185,6 +186,22 @@ var testBoards = []scoreTests{
 			HighCard:   []uint8{0, 3, 4},
 		},
 	}, {
+		name: "DoublePair3",
+		board: []cards.Card{
+			{Value: 12, Suit: 2},
+			{Value: 12, Suit: 0},
+			{Value: 10, Suit: 3},
+			{Value: 8, Suit: 1},
+			{Value: 5, Suit: 3},
+			{Value: 5, Suit: 0},
+			{Value: 2, Suit: 0},
+		},
+		expectedScoreCard: ScoreCard{
+			DoublePair: []uint8{4, 5},
+			Pair:       []uint8{0, 1},
+			HighCard:   []uint8{2, 3, 6},
+		},
+	}, {
 		name: "Pair1",
 		board: []cards.Card{
 			{Value: 14, Suit: 0},
@@ -236,7 +253,8 @@ func TestScore(t *testing.T) {
 			t.Fatalf("Test-%v could not Score the board: %v", testBoards[i].name, err.Error())
 		}
 		sc.Board = nil
-		log.Debugf("Comparing %v with %v", sc, testBoards[i].expectedScoreCard)
+		t.Logf("Testing: %v", testBoards[i].name)
+		log.Debugf("Comparing %#v with %#v", sc, testBoards[i].expectedScoreCard)
 
 		//Surely there's a better way...
 		if sc.StraightFlush != testBoards[i].expectedScoreCard.StraightFlush {

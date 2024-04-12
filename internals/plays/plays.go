@@ -135,11 +135,11 @@ func (p *Play) WinRound(winnerIds []int) error {
 	}
 	//now would be a good time to split the pot
 
-	log.Infof("Player %v won %v$", winnerIds, pot)
+	log.Debugf("Player %v won %v$", winnerIds, pot)
 	for _, winnerId := range winnerIds {
 		gains := int(pot / (len(winnerIds)))
 		p.Players[winnerId].Stack += gains
-		log.Infof("Player %v wins %v, GG !", p.Players[winnerId].Name, gains)
+		log.Infof("Player %v wins $%v, GG !", p.Players[winnerId].Name, gains)
 	}
 
 	return nil
@@ -247,7 +247,7 @@ func (p *Play) EndRound() error {
 			}
 		}
 
-		log.Infof("Winning with %#v", *highestScoreCard)
+		log.Infof("Winning with %v", highestScoreCard)
 
 		return p.WinRound(winnerIds)
 	}

@@ -20,7 +20,7 @@ const (
 var levels = []string{"DBG", "INFO", "WARN", "CRIT"}
 var Logger *log.Logger
 
-var MinLevel = DEBUG
+var MinLevel = INFO
 
 func init() {
 	Logger = log.New(os.Stdout, "goker > ", log.Ldate|log.Ltime|log.Lmsgprefix)

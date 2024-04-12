@@ -125,7 +125,6 @@ func (p *Play) GetPot() (int, error) {
 	return pot, nil
 }
 
-//
 func (p *Play) WinRound(winnerIds []int) error {
 	//Prints the player(s) who wins, and how much
 	p.Round = 4 //recognize play is ended
@@ -133,9 +132,7 @@ func (p *Play) WinRound(winnerIds []int) error {
 	if err != nil {
 		return err
 	}
-	//now would be a good time to split the pot
 
-	log.Debugf("Player %v won %v$", winnerIds, pot)
 	for _, winnerId := range winnerIds {
 		gains := int(pot / (len(winnerIds)))
 		p.Players[winnerId].Stack += gains
@@ -159,35 +156,40 @@ func (p *Play) EndRound() error {
 		return p.WinRound([]int{playersStillPlaying[0]})
 	}
 
+	log.Debugf("playersStillPlaying: %v", playersStillPlaying)
+
 	sumBetAmountByPlayerId := make(map[int]int)
 	sumBetByPlayerId := make(map[int]int) // could be used later for max 3 bet rounds, right now only to manage blind bets
 
-	for i := range (*p.Bets)[p.Round] {
-		sumBetByPlayerId[(*p.Bets)[p.Round][i].PlayerID] += 1
-		sumBetAmountByPlayerId[(*p.Bets)[p.Round][i].PlayerID] += (*p.Bets)[p.Round][i].Amount
+	for _, bet := range (*p.Bets)[p.Round] {
+		sumBetByPlayerId[bet.PlayerID] += 1
+		sumBetAmountByPlayerId[bet.PlayerID] += bet.Amount
 	}
+	log.Debugf("sumBetByPlayerId: %v", sumBetByPlayerId)
 
-	for id := range playersStillPlaying {
-		if sumBetAmountByPlayerId[id] != sumBetAmountByPlayerId[playersStillPlaying[0]] {
+	for _, id := range playersStillPlaying {
+		canCheck, err := p.CanCheck(id)
+		if err != nil {
+			return err
+		}
+		if !canCheck {
 			return log.Error("Not all still playing players have bet the same")
 		}
 		haveTalked := false
 		//manages blinds
 		if p.Round == 0 {
-			//Manages heads up
-			bigBlindPlayerId := 1
-			smallBlindPlayerId := 2
-			if len(p.Players) == 2 {
-				smallBlindPlayerId = 0
-				bigBlindPlayerId = 1
-			}
-			if (id == smallBlindPlayerId || id == bigBlindPlayerId) && sumBetByPlayerId[id] > 1 {
+			//No need to manage heads up, blind player ids are always <= 1
+			if (id <= 1 && sumBetByPlayerId[id] > 1) || (id > 1 && sumBetByPlayerId[id] > 0) {
 				haveTalked = true
 			}
 		} else if sumBetByPlayerId[id] > 0 {
 			haveTalked = true
-
 		}
+		log.Debugf("sumBetByPlayerId: %v", sumBetByPlayerId)
+		log.Debugf("sumBetByPlayerId[id]: %v", sumBetByPlayerId[id])
+		log.Debugf("haveTalked: %v", haveTalked)
+		log.Debugf("id: %v", id)
+
 		if !haveTalked {
 			return log.Error("Not all still playing players express themselves #N.W.A.")
 		}
@@ -199,7 +201,7 @@ func (p *Play) EndRound() error {
 		//To move into Showdown func ?
 		playerScoreCards := make(map[int]*scores.ScoreCard, len(playersStillPlaying))
 
-		for id := range playersStillPlaying {
+		for _, id := range playersStillPlaying {
 			var playerHand []cards.Card // board + player cards
 
 			playerCards, err := p.GetPlayerCards(id)
@@ -227,10 +229,16 @@ func (p *Play) EndRound() error {
 			log.Infof("%v had: %v", p.Players[id].Name, *playerCards)
 		}
 
-		highestScoreCard := playerScoreCards[0]
-		winnerIds := []int{0}
+		var highestScoreCard *scores.ScoreCard = nil
+		var winnerIds []int
 
-		for playerId := 1; playerId < len(playerScoreCards); playerId++ {
+		//need to browse map keys, not index
+		for playerId := range playerScoreCards {
+			if highestScoreCard == nil {
+				highestScoreCard = playerScoreCards[playerId]
+				winnerIds = []int{playerId}
+				continue
+			}
 			comparator, err := scores.CompareScoreCards(playerScoreCards[playerId], highestScoreCard)
 			if err != nil {
 				return err
@@ -247,7 +255,9 @@ func (p *Play) EndRound() error {
 			}
 		}
 
-		log.Infof("Winning with %v", highestScoreCard)
+		for _, id := range winnerIds {
+			log.Infof("%v WINS with %v", p.Players[id].Name, highestScoreCard)
+		}
 
 		return p.WinRound(winnerIds)
 	}
@@ -273,8 +283,8 @@ func (p *Play) GetMinBetToCall(playerId int) (int, error) {
 	//log.Debugf("Player %v tries to check, checking if she can", playerId)
 	sumBetAmountByPlayerId := make(map[int]int)
 
-	for i := range (*p.Bets)[p.Round] {
-		sumBetAmountByPlayerId[(*p.Bets)[p.Round][i].PlayerID] += (*p.Bets)[p.Round][i].Amount
+	for _, bet := range (*p.Bets)[p.Round] {
+		sumBetAmountByPlayerId[bet.PlayerID] += bet.Amount
 	}
 	log.Debugf("sumBetAmountByPlayerId at GetMinBetToCall %v", sumBetAmountByPlayerId)
 
@@ -289,7 +299,8 @@ func (p *Play) GetMinBetToCall(playerId int) (int, error) {
 	}
 
 	minBetToCall := maxBet - sumBetAmountByPlayerId[playerId]
-	log.Debugf("Bet needed to call: %v", minBetToCall)
+
+	log.Debugf("Player%v needs to bet $%v to call", playerId, minBetToCall)
 
 	return minBetToCall, nil
 }
@@ -361,11 +372,6 @@ func (p *Play) Fold(playerId int) error {
 	}
 	p.Players[playerId].StillPlays = false
 
-	//Try blindly to EndRound, there might be no need to continue
-	if err := p.EndRound(); err != nil {
-		log.Debugf("Because player %v is folding we tried unsuccessfully to EndRound, %w", playerId, err)
-	}
-
 	return nil
 }
 
@@ -413,4 +419,114 @@ func (p *Play) checkPlayerStillPlays(playerId int) error {
 	}
 
 	return nil
+}
+
+//Very dumb, basic and unique strat
+func (p *Play) ComputePlayerDecision(playerId int) (string, error) {
+	if playerId > len(p.Players) {
+		return "", log.Error("Player not in this play")
+	}
+	if !p.Players[playerId].StillPlays {
+		return "", log.Error("player does not play anymore")
+	}
+
+	decision := "check"
+
+	canCheck, err := p.CanCheck(playerId)
+	if err != nil {
+		log.Fatalf("got error during CanCheck %w", err)
+	}
+	if !canCheck {
+		decision = "fold"
+	}
+
+	//Default behavior is check/fold, managing other cases now
+
+	var playerHand []cards.Card // board + player cards
+
+	playerCards, err := p.GetPlayerCards(playerId)
+	if err != nil {
+		return "", err
+	}
+	board, err := p.GetBoard()
+	if err != nil {
+		return "", err
+	}
+	for i := range *board {
+		playerHand = append(playerHand, (*board)[i])
+	}
+	for i := range *playerCards {
+		playerHand = append(playerHand, (*playerCards)[i])
+	}
+
+	sc, err := scores.Score(playerHand)
+	if err != nil {
+		return "", err
+	}
+
+	bestScoreField := sc.GetBestScoreField()
+
+	if p.Round > 0 {
+		boardSc, err := scores.Score(*board)
+		if err != nil {
+			return "", err
+		}
+		boardBestScoreField := boardSc.GetBestScoreField()
+		if bestScoreField == boardBestScoreField {
+			log.Debug("No competitive advantage") // not true, but simplifying
+			//could manage later the potential straight or flush
+			return decision, nil
+		}
+	}
+
+	//should inject more advanced calls to stats.go here
+	switch bestScoreField {
+	case "HighCard":
+		var valueSum uint8
+		for _, card := range *playerCards {
+			valueSum += card.Value
+		}
+		if valueSum > 15 {
+			//A2 -> 78 hole cards
+			decision = "call"
+		}
+	case "Pair":
+		pairRank := playerHand[sc.Pair[0]].Value
+		for _, card := range playerHand {
+			if pairRank > card.Value {
+				pairRank++
+			}
+		}
+		if pairRank > uint8(p.Round) {
+			//Arbitrary, always call on pre-flop pair
+			//then if amongst the lowest pair => check/fold
+			decision = "call"
+		}
+	case "DoublePair":
+		decision = "call"
+	default:
+		decision = "raise"
+	}
+
+	log.Debugf("Intermediate decision after checking scoreCard: %v", decision)
+
+	if decision == "check" || decision == "fold" {
+		//Maybe we're waiting for a miracle ?
+		maxSuit := sc.GetMaxSuit()
+		maxSraight := sc.GetMaxStraight()
+
+		log.Debugf("maxSuit: %v and maxSraight: %v are on a boat... no wait", maxSuit, maxSraight)
+
+		if p.Round == 1 {
+			if maxSuit >= 3 || maxSraight >= 3 {
+				decision = "call"
+			}
+		} else if p.Round < 3 && (maxSuit == 4 || maxSraight >= 4) {
+			decision = "call"
+		}
+	}
+
+	log.Debugf("Final decision after checking suit and straight chances: %v", decision)
+
+	return decision, nil
 }

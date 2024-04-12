@@ -23,17 +23,19 @@ func Execute() {
 	if err != nil {
 		log.Fatalf("could not instantiate Player1 : %w", err)
 	}
-	log.Debugf("%v is sitting on the bench", p2.Name)
-	//players := []*plays.Player{p0, p1, p2}
-	players := []*plays.Player{p0, p1}
+	//log.Debugf("%v is sitting on the bench", p0.Name)
+	players := []*plays.Player{p1, p2, p0}
+	//players := []*plays.Player{p1, p2}
+	//players := []*plays.Player{p0, p1}
 
 	for !rageQuit {
-
 		p, err := plays.NewPlay(players)
 		if err != nil {
 			log.Fatalf("%w", err)
 		}
 		log.Infof("BlindInfos : %v", p.Blinds)
+
+		blindPlayersSkipped := 0
 
 		for p.Round != 4 {
 			currentRount := p.Round
@@ -41,17 +43,20 @@ func Execute() {
 				log.Fatal("round could not begin")
 			}
 			for id := range p.Players {
-				if !p.Players[id].StillPlays {
-					continue
-				}
 				if p.Round == 0 && len((*p.Bets)[0]) == 2 {
-					if len(p.Players) > 2 && id < 2 {
+					if len(p.Players) > 2 && id < 2 && blindPlayersSkipped < 2 {
 						log.Debug(">2 is a crowd, skip 2 players due to blinds")
+						//BUG, if only 2 players left pre-flop, and they havec blind, we'll skip them in loop
+						blindPlayersSkipped++
 						continue
-					} else if id == 0 {
+					} else if len(p.Players) == 2 && id == 0 {
 						log.Debug("begining new play in heads up, skip small blind player")
+						blindPlayersSkipped++
 						continue
 					}
+				}
+				if !p.Players[id].StillPlays {
+					continue
 				}
 
 				log.Info("#####################################")
@@ -76,81 +81,109 @@ func Execute() {
 				if !isAutonomous {
 					log.Infof("%v has: %v          board: %v", p.Players[id].Name, *cards, *board)
 					log.Infof("Bets for this round are: %v", (*p.Bets)[p.Round])
+				} else {
+					log.Infof("board: %v", *board)
+					log.Infof("Bets for this round are: %v", (*p.Bets)[p.Round])
 				}
 
 				canCheck, err := p.CanCheck(id)
 				if err != nil {
 					log.Fatalf("got error during CanCheck %w", err)
 				}
+
+			QUESTION:
 				if isAutonomous {
-					if err := p.Call(id); err != nil {
+					answer, err = p.ComputePlayerDecision(id)
+					if err != nil {
 						log.Fatalf("%w", err)
 					}
 				} else {
 					if canCheck {
-						log.Infof("%v, What do you want to do ? (raise/check/fold)", p.Players[id].Name)
+						log.Infof("%v, What do you want to do ? (check/raise/fold)", p.Players[id].Name)
 					} else {
 						log.Infof("%v, What do you want to do ? (call/raise/fold)", p.Players[id].Name)
 					}
 
-				QUESTION:
 					//read input from user
 					fmt.Scanln(&answer)
-					switch answer {
-					case "call":
-						if err := p.Call(id); err != nil {
-							log.Fatalf("%w", err)
+				}
+
+				switch answer {
+				case "call":
+					if err := p.Call(id); err != nil {
+						log.Fatalf("%w", err)
+					}
+				case "raise":
+					if err := p.Raise(id, p.Blinds.BigBlind); err != nil {
+						log.Fatalf("%w", err)
+					}
+				case "check":
+					if !canCheck {
+						log.Info("You can't do that")
+						if isAutonomous {
+							log.Fatal("error computing decision for CPU")
 						}
-					case "raise":
-						if err := p.Raise(id, p.Blinds.BigBlind); err != nil {
-							log.Fatalf("%w", err)
-						}
-					case "check":
-						if !canCheck {
-							log.Info("You can't do that")
-							goto QUESTION
-						}
-						if err := p.Call(id); err != nil {
-							log.Fatalf("%w", err)
-						}
-					case "fold":
-						if err := p.Fold(id); err != nil {
-							log.Fatalf("%w", err)
-						}
-					default:
-						log.Info("I didn't understand")
 						goto QUESTION
 					}
-					answer = ""
+					if err := p.Call(id); err != nil {
+						log.Fatalf("%w", err)
+					}
+				case "fold":
+					if err := p.Fold(id); err != nil {
+						log.Fatalf("%w", err)
+					}
+				default:
+					log.Warn("I didn't understand")
+					if isAutonomous {
+						log.Fatal("error computing decision for CPU")
+					}
+					goto QUESTION
 				}
+				answer = ""
 
 				if err := p.EndRound(); err != nil {
 					log.Debugf("%w", err) //don't exit, just continue playing
 				}
 
-				if p.Round == currentRount+1 {
-					//Manages case where player 1 raised, player 0 had to call, we want to start player loop again
-					//goto NEXTROUND
+				if p.Round != currentRount {
+					//if EndRound changed the current round, stop asking players for this round
+					//e.g. EndRound when everyone else fold, p.Round is 4 and we need to start new game
 					break
 				}
 			}
 		}
+		onlyAutonomousPlayers := true
+
 		for i := range p.Players {
 			p.Players[i].StillPlays = true
 			log.Infof("Stack of %v is: $%v", p.Players[i].Name, p.Players[i].Stack)
+			if p.Players[i].Strategy != 1 {
+				onlyAutonomousPlayers = false
+			}
 		}
 
-		log.Info("Continue playing (Y/n)?")
-		fmt.Scanln(&answer)
-		if answer == "n" {
-			log.Info("Thanks for playing")
-			rageQuit = true
+		if !onlyAutonomousPlayers {
+			log.Info("Continue playing (Y/n)?")
+			fmt.Scanln(&answer)
+			if answer == "n" {
+				log.Info("Thanks for playing")
+				rageQuit = true
+			}
+			answer = ""
 		}
-		answer = ""
+
+		players = make([]*plays.Player, len(p.Players))
 
 		for id := range p.Players {
-			p.Players[id].ID = (id + 1) % len(p.Players) //move the Dealer button
+			if p.Players[id].Stack > (p.Blinds.BigBlind) {
+				newId := (id + 1) % len(p.Players) //move the Dealer button
+				players[newId] = p.Players[id]
+			}
 		}
-		players = []*plays.Player{p1, p0}
+
+		if len(players) == 1 {
+			log.Infof("TOURNAMENT WINNER: %v", players[0].Name)
+			rageQuit = true
+		}
 	}
 }

@@ -38,7 +38,7 @@ type Player struct {
 	//Hand       *cards.Hand // Player's hole cards
 	//---- could be removed ? if we know players place in the Play, and Deck is ordered, we can deduce this
 	StillPlays bool // Last action taken by the player (e.g., bet, fold)
-	//Strategy   int
+	Strategy   int
 }
 
 //Strategy
@@ -52,12 +52,13 @@ type Player struct {
 
 */
 
-func NewPlayer(name string) (*Player, error) {
+func NewPlayer(name string, strategy int) (*Player, error) {
 	return &Player{
 		ID:         0,
 		Name:       name,
-		Stack:      10000,
+		Stack:      100,
 		StillPlays: true,
+		Strategy:   strategy,
 	}, nil
 }
 
@@ -88,12 +89,20 @@ func NewPlay(players []*Player) (*Play, error) {
 		Round:   0,
 	}
 
-	log.Debug("Player0 is always the Dealer")
+	log.Debug("Dealer is always last player")
 
-	bigBlindPlayerId := 2 % len(p.Players) //Manages heads up
+	smallBlindPlayerId := 0
+	bigBlindPlayerId := 1
+
+	//Manages heads up
+	if len(p.Players) == 2 {
+		smallBlindPlayerId = 1
+		bigBlindPlayerId = 0
+	}
 	log.Debugf("bigBlindPlayerId : %v", bigBlindPlayerId)
+	log.Debugf("smallBlindPlayerId : %v", smallBlindPlayerId)
 
-	if err := p.PutBet(1, p.Blinds.SmallBlind); err != nil {
+	if err := p.PutBet(smallBlindPlayerId, p.Blinds.SmallBlind); err != nil {
 		return nil, err
 	}
 	if err := p.PutBet(bigBlindPlayerId, p.Blinds.BigBlind); err != nil {
@@ -103,14 +112,14 @@ func NewPlay(players []*Player) (*Play, error) {
 	return p, nil
 }
 
-func (p *Play) ComputePot() (int, error) {
+func (p *Play) GetPot() (int, error) {
 	pot := 0
 	for round := 0; round < p.Round; round++ {
 		for _, bet := range (*p.Bets)[round] {
 			pot += bet.Amount
 		}
 	}
-	if pot == 0 {
+	if p.Round != 0 && pot == 0 {
 		return 0, log.Error("pot cannot be 0") // Blinds
 	}
 	return pot, nil
@@ -120,17 +129,17 @@ func (p *Play) ComputePot() (int, error) {
 func (p *Play) WinRound(winnerIds []int) error {
 	//Prints the player(s) who wins, and how much
 	p.Round = 4 //recognize play is ended
-	pot, err := p.ComputePot()
+	pot, err := p.GetPot()
 	if err != nil {
 		return err
 	}
 	//now would be a good time to split the pot
 
-	log.Infof("Player %v won %v$", winnerIds, pot)
+	log.Debugf("Player %v won %v$", winnerIds, pot)
 	for _, winnerId := range winnerIds {
 		gains := int(pot / (len(winnerIds)))
 		p.Players[winnerId].Stack += gains
-		log.Infof("Player %v wins %v, GG !", p.Players[winnerId].Name, gains)
+		log.Infof("Player %v wins $%v, GG !", p.Players[winnerId].Name, gains)
 	}
 
 	return nil
@@ -140,7 +149,6 @@ func (p *Play) WinRound(winnerIds []int) error {
 func (p *Play) EndRound() error {
 	//Players still playing needs to have all the same sum of bets && at least 2 bets for blinds player
 	var playersStillPlaying []int
-	bigBlindPlayerId := 2 % len(p.Players) //Manages heads up
 
 	for i := range p.Players {
 		if p.Players[i].StillPlays {
@@ -159,25 +167,36 @@ func (p *Play) EndRound() error {
 		sumBetAmountByPlayerId[(*p.Bets)[p.Round][i].PlayerID] += (*p.Bets)[p.Round][i].Amount
 	}
 
-	if p.Round == 0 {
-		if sumBetByPlayerId[1] < 2 && p.Players[1].StillPlays {
-			return log.Error("Player 1 did not speak though he/she put the small blind")
-		}
-		if sumBetByPlayerId[bigBlindPlayerId] < 2 && p.Players[bigBlindPlayerId].StillPlays {
-			return log.Errorf("Player %v did not speak though he/she put the small blind", bigBlindPlayerId)
-		}
-	}
-
 	for id := range playersStillPlaying {
 		if sumBetAmountByPlayerId[id] != sumBetAmountByPlayerId[playersStillPlaying[0]] {
 			return log.Error("Not all still playing players have bet the same")
+		}
+		haveTalked := false
+		//manages blinds
+		if p.Round == 0 {
+			//Manages heads up
+			bigBlindPlayerId := 1
+			smallBlindPlayerId := 2
+			if len(p.Players) == 2 {
+				smallBlindPlayerId = 0
+				bigBlindPlayerId = 1
+			}
+			if (id == smallBlindPlayerId || id == bigBlindPlayerId) && sumBetByPlayerId[id] > 1 {
+				haveTalked = true
+			}
+		} else if sumBetByPlayerId[id] > 0 {
+			haveTalked = true
+
+		}
+		if !haveTalked {
+			return log.Error("Not all still playing players express themselves #N.W.A.")
 		}
 	}
 
 	log.Debug("We can go to next round")
 
 	if p.Round == 3 {
-		//To move into Showdown func
+		//To move into Showdown func ?
 		playerScoreCards := make(map[int]*scores.ScoreCard, len(playersStillPlaying))
 
 		for id := range playersStillPlaying {
@@ -204,6 +223,8 @@ func (p *Play) EndRound() error {
 			}
 
 			playerScoreCards[id] = sc
+
+			log.Infof("%v had: %v", p.Players[id].Name, *playerCards)
 		}
 
 		highestScoreCard := playerScoreCards[0]
@@ -225,6 +246,9 @@ func (p *Play) EndRound() error {
 				winnerIds = append(winnerIds, playerId)
 			}
 		}
+
+		log.Infof("Winning with %v", highestScoreCard)
+
 		return p.WinRound(winnerIds)
 	}
 	p.Round++
@@ -236,36 +260,72 @@ func (p *Play) BeginRound() error {
 	if p.Round == 0 {
 		return nil
 	}
-	potValue, err := p.ComputePot()
+	potValue, err := p.GetPot()
 	if err != nil {
 		return err
 	}
-	log.Infof("POT value : %v$", potValue)
+	log.Infof("New pot value : %v$", potValue)
 
-	board, err := p.GetBoard()
-	if err != nil {
-		return err
-	}
-	log.Infof("BOARD: %v", *board)
 	return nil
 }
 
-func (p *Play) CanCheck(playerId int) (bool, error) {
+func (p *Play) GetMinBetToCall(playerId int) (int, error) {
 	//log.Debugf("Player %v tries to check, checking if she can", playerId)
-	playerLastBet := 0
-	currentRoundBets := (*p.Bets)[p.Round]
-	for _, bet := range currentRoundBets {
-		if bet.PlayerID == playerId {
-			playerLastBet = bet.Amount
+	sumBetAmountByPlayerId := make(map[int]int)
+
+	for i := range (*p.Bets)[p.Round] {
+		sumBetAmountByPlayerId[(*p.Bets)[p.Round][i].PlayerID] += (*p.Bets)[p.Round][i].Amount
+	}
+	log.Debugf("sumBetAmountByPlayerId at GetMinBetToCall %v", sumBetAmountByPlayerId)
+
+	maxBet := 0
+	for id := range sumBetAmountByPlayerId {
+		if id == playerId {
+			continue
+		}
+		if sumBetAmountByPlayerId[id] > maxBet {
+			maxBet = sumBetAmountByPlayerId[id]
 		}
 	}
 
-	if len(currentRoundBets) == 0 {
-		return true, nil
-	} else if (*p.Bets)[p.Round][len(currentRoundBets)-1].Amount > playerLastBet {
+	minBetToCall := maxBet - sumBetAmountByPlayerId[playerId]
+	log.Debugf("Bet needed to call: %v", minBetToCall)
+
+	return minBetToCall, nil
+}
+
+func (p *Play) CanCheck(playerId int) (bool, error) {
+	minBet, err := p.GetMinBetToCall(playerId)
+	if err != nil {
+		return false, err
+	}
+	if minBet != 0 {
+		log.Debugf("Cannot check, need at least a bet of %v$", minBet)
 		return false, nil
 	}
 	return true, nil
+}
+
+//Call or check (call with 0$)
+func (p *Play) Call(playerId int) error {
+	minBet, err := p.GetMinBetToCall(playerId)
+	if err != nil {
+		return err
+	}
+
+	return p.PutBet(playerId, minBet)
+}
+
+func (p *Play) Raise(playerId int, raiseAmount int) error {
+	if raiseAmount < p.Blinds.SmallBlind {
+		return log.Errorf("cannot raise of amount %v, needs to be > small blind", raiseAmount)
+	}
+	minBet, err := p.GetMinBetToCall(playerId)
+	if err != nil {
+		return err
+	}
+
+	return p.PutBet(playerId, minBet+raiseAmount)
 }
 
 func (p *Play) PutBet(playerId int, amount int) error {

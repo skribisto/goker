@@ -39,19 +39,24 @@ func Score(board []cards.Card) (*ScoreCard, error) {
 	if err != nil {
 		return nil, err
 	}
+	log.Debugf("DEBUG SC checkStraight GOT : %v", sc)
 
 	err = sc.checkFlush()
 	if err != nil {
 		return nil, err
 	}
+	log.Debugf("DEBUG SC checkFlush GOT : %v", sc)
 
 	if len(sc.Straight) > 0 && len(sc.Flush) > 0 {
 		sc.StraightFlush = true
-	}
-
-	err = sc.checkXOfAKind()
-	if err != nil {
-		return nil, err
+		//got our 5 cards
+	} else if len(sc.Straight) > 0 || len(sc.Flush) > 0 {
+		log.Debug("We have 5 cards, no need to go further")
+	} else {
+		err = sc.checkXOfAKind()
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	log.Debugf("sc at the end of Score %v", sc)
@@ -304,42 +309,31 @@ func (sc *ScoreCard) checkStraight() error {
 	}
 
 	if len(straightCards) != 5 {
-		return log.Error("not 5 cards in Straight count")
+		straightCards = []uint8{} // all or nothing
 	}
+	sc.Straight = straightCards
 
 	return nil
 }
 
 func (sc *ScoreCard) checkFlush() error {
-	if len(sc.Flush) != 0 {
-		//already checked
-		return nil
-	}
 	board := *sc.Board
-	enoughRoomLeft := true
-	var flushCards []uint8
+	countCardsBySuit := make(map[uint8][]uint8, 4) //4 suits
 
-	for i := range board {
-		if enoughRoomLeft && len(board)-i < 5 {
-			enoughRoomLeft = false
-		}
-		if i < len(board)-1 && board[i].Suit != board[i+1].Suit {
-			if !enoughRoomLeft {
-				return nil
-			}
-			flushCards = []uint8{} //reset
-		}
-		flushCards = append(flushCards, uint8(i))
+	for position, card := range board {
+		log.Debugf("Card position: %v, suit: %v, value: %v", position, card.Suit, card.Value)
+		countCardsBySuit[card.Suit] = append(countCardsBySuit[card.Suit], uint8(position))
+	}
+	log.Debugf("countCardsBySuit: %v", countCardsBySuit)
 
-		if len(flushCards) == 5 {
-			break
+	var suit uint8
+	for suit = 0; suit < 4; suit++ {
+		if len(countCardsBySuit[suit]) >= 5 {
+			sc.Flush = countCardsBySuit[suit]
+			return nil
 		}
 	}
-	if len(flushCards) != 5 {
-		return log.Error("no 5 cards in Flush count")
-	}
-
-	sc.Flush = flushCards
+	log.Debug("did not find any flush")
 
 	return nil
 }
@@ -390,11 +384,13 @@ func (sc *ScoreCard) checkXOfAKind() error {
 				//we need to split it to have a fullHouse
 				//Don't forget board is ordered
 				sc.Pair = oakCount.indices[:1]
+				sc.HighCard = []uint8{}
 				sc.FullHouse = true
 				break
 			}
 			sc.Three = oakCount.indices
 			if len(sc.Pair) > 0 {
+				sc.HighCard = []uint8{}
 				sc.FullHouse = true
 				break
 			}
@@ -417,6 +413,13 @@ func (sc *ScoreCard) checkXOfAKind() error {
 			}
 			//log.Debug("found pair", sc)
 			sc.Pair = oakCount.indices
+
+			//this pair might trigger a fullHouse
+			if len(sc.Three) > 0 {
+				sc.HighCard = []uint8{}
+				sc.FullHouse = true
+				break
+			}
 		} else if oakCount.count == 1 {
 			//fill HighCard in desc order of value because board is ordered
 			sc.HighCard = append(sc.HighCard, oakCount.indices[0])

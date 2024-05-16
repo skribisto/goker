@@ -2,8 +2,9 @@ package cmd
 
 import (
 	"fmt"
-	"goker/internals/plays"
-	"goker/pkg/log"
+
+	"github.com/skribisto/goker/internals/plays"
+	"github.com/skribisto/goker/pkg/log"
 )
 
 func Execute() {

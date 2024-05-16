@@ -1,9 +1,10 @@
 package scores
 
 import (
-	"goker/pkg/cards"
-	"goker/pkg/log"
 	"sort"
+
+	"github.com/skribisto/goker/pkg/cards"
+	"github.com/skribisto/goker/pkg/log"
 )
 
 type ScoreCard struct {

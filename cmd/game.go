@@ -12,9 +12,9 @@ func Execute() {
 	var answer string
 	rageQuit := false
 
-	log.Infof("Current Version of Goker: %v", common.GetVersion())
+	log.GLogf("Current Version of Goker: %v", common.GetVersion())
 
-	p0, err := plays.NewPlayer("Skrib", 0)
+	p0, err := plays.NewPlayer("Player", 0)
 	if err != nil {
 		log.Fatalf("could not instantiate Player0 : %w", err)
 	}
@@ -38,7 +38,7 @@ func Execute() {
 		if err != nil {
 			log.Fatalf("%w", err)
 		}
-		log.Infof("BlindInfos : %v", p.Blinds)
+		log.GLogf("BlindInfos : %v", p.Blinds)
 
 		blindPlayersSkipped := 0
 
@@ -64,13 +64,13 @@ func Execute() {
 					continue
 				}
 
-				log.Info("#####################################")
-				log.Infof("######### P%v: %v's turn  ############", id, p.Players[id].Name)
-				log.Info("#####################################")
+				log.GLog("#####################################")
+				log.GLogf("######### P%v: %v's turn  ############", id, p.Players[id].Name)
+				log.GLog("#####################################")
 
 				isAutonomous := false
 				if p.Players[id].Strategy == 1 {
-					log.Info("Player is autonomous")
+					log.Debug("Player is autonomous")
 					isAutonomous = true
 				}
 
@@ -84,11 +84,11 @@ func Execute() {
 					log.Fatalf("%w", err)
 				}
 				if !isAutonomous {
-					log.Infof("%v has: %v          board: %v", p.Players[id].Name, *cards, *board)
-					log.Infof("Bets for this round are: %v", (*p.Bets)[p.Round])
+					log.GLogf("%v has: %v          board: %v", p.Players[id].Name, *cards, *board)
+					log.GLogf("Bets for this round are: %v", (*p.Bets)[p.Round])
 				} else {
-					log.Infof("board: %v", *board)
-					log.Infof("Bets for this round are: %v", (*p.Bets)[p.Round])
+					log.GLogf("board: %v", *board)
+					log.GLogf("Bets for this round are: %v", (*p.Bets)[p.Round])
 				}
 
 				canCheck, err := p.CanCheck(id)
@@ -104,9 +104,9 @@ func Execute() {
 					}
 				} else {
 					if canCheck {
-						log.Infof("%v, What do you want to do ? (check/raise/fold)", p.Players[id].Name)
+						log.GLogf("%v, What do you want to do ? (check/raise/fold)", p.Players[id].Name)
 					} else {
-						log.Infof("%v, What do you want to do ? (call/raise/fold)", p.Players[id].Name)
+						log.GLogf("%v, What do you want to do ? (call/raise/fold)", p.Players[id].Name)
 					}
 
 					//read input from user
@@ -124,7 +124,7 @@ func Execute() {
 					}
 				case "check":
 					if !canCheck {
-						log.Info("You can't do that")
+						log.GLog("You can't do that")
 						if isAutonomous {
 							log.Fatal("error computing decision for CPU")
 						}
@@ -161,17 +161,17 @@ func Execute() {
 
 		for i := range p.Players {
 			p.Players[i].StillPlays = true
-			log.Infof("Stack of %v is: $%v", p.Players[i].Name, p.Players[i].Stack)
+			log.GLogf("Stack of %v is: $%v", p.Players[i].Name, p.Players[i].Stack)
 			if p.Players[i].Strategy != 1 {
 				onlyAutonomousPlayers = false
 			}
 		}
 
 		if !onlyAutonomousPlayers {
-			log.Info("Continue playing (Y/n)?")
+			log.GLog("Continue playing (Y/n)?")
 			fmt.Scanln(&answer)
 			if answer == "n" {
-				log.Info("Thanks for playing")
+				log.GLog("Thanks for playing")
 				rageQuit = true
 			}
 			answer = ""
@@ -187,7 +187,7 @@ func Execute() {
 		}
 
 		if len(players) == 1 {
-			log.Infof("TOURNAMENT WINNER: %v", players[0].Name)
+			log.GLogf("TOURNAMENT WINNER: %v", players[0].Name)
 			rageQuit = true
 		}
 	}

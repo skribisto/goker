@@ -1,8 +1,9 @@
 package scores
 
 import (
-	"goker/pkg/cards"
 	"testing"
+
+	"github.com/skribisto/goker/pkg/cards"
 )
 
 type scoreTests struct {

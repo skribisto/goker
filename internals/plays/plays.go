@@ -1,9 +1,9 @@
 package plays
 
 import (
-	"goker/pkg/cards"
-	"goker/pkg/log"
-	scores "goker/pkg/poker"
+	"github.com/skribisto/goker/pkg/cards"
+	"github.com/skribisto/goker/pkg/log"
+	scores "github.com/skribisto/goker/pkg/poker"
 )
 
 type Play struct {

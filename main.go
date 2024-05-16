@@ -1,6 +1,6 @@
 package main
 
-import "goker/cmd"
+import "github.com/skribisto/goker/cmd"
 
 func main() {
 	cmd.Execute()

@@ -22,7 +22,7 @@ jobs:
         go-version: '1.20'
 
     - name: Build
-      run: go build -v github.com/skribisto/goker
+      run: releaser/releaser.sh
 
     - name: Test
       run: go test -v github.com/skribisto/goker/pkg/poker

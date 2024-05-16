@@ -19,20 +19,18 @@ const (
 
 var levels = []string{"DBG", "INFO", "WARN", "CRIT"}
 var Logger *log.Logger
+var GameLogger *log.Logger
 
 var MinLevel = INFO
 
 func init() {
 	Logger = log.New(os.Stdout, "goker > ", log.Ldate|log.Ltime|log.Lmsgprefix)
+	GameLogger = log.New(os.Stdout, "", 0)
 
 	if MinLevel == DEBUG {
 		Logger.SetFlags(Logger.Flags() | log.Lshortfile)
+		GameLogger.SetFlags(Logger.Flags() | log.Lshortfile)
 	}
-
-	// logFile, err := os.OpenFile("logs.txt", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
-	// if err != nil {
-	// 	os.Exit(1)
-	// }
 }
 
 func Debug(msg string) {
@@ -83,4 +81,10 @@ func Error(msg string) error {
 func Errorf(format string, values ...interface{}) error {
 	//Is there an easy way not to use fmt here ? only use ...
 	return fmt.Errorf(format, values...)
+}
+func GLog(msg string) {
+	GameLogger.Print(msg)
+}
+func GLogf(format string, values ...interface{}) {
+	GameLogger.Printf(format, values...)
 }

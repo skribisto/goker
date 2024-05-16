@@ -136,7 +136,7 @@ func (p *Play) WinRound(winnerIds []int) error {
 	for _, winnerId := range winnerIds {
 		gains := int(pot / (len(winnerIds)))
 		p.Players[winnerId].Stack += gains
-		log.Infof("Player %v wins $%v, GG !", p.Players[winnerId].Name, gains)
+		log.GLogf("Player %v wins $%v, GG !", p.Players[winnerId].Name, gains)
 	}
 
 	return nil
@@ -226,7 +226,7 @@ func (p *Play) EndRound() error {
 
 			playerScoreCards[id] = sc
 
-			log.Infof("%v had: %v", p.Players[id].Name, *playerCards)
+			log.GLogf("%v had: %v", p.Players[id].Name, *playerCards)
 		}
 
 		var highestScoreCard *scores.ScoreCard = nil
@@ -256,7 +256,7 @@ func (p *Play) EndRound() error {
 		}
 
 		for _, id := range winnerIds {
-			log.Infof("%v WINS with %v", p.Players[id].Name, highestScoreCard)
+			log.GLogf("%v WINS with %v", p.Players[id].Name, highestScoreCard)
 		}
 
 		return p.WinRound(winnerIds)
@@ -274,7 +274,7 @@ func (p *Play) BeginRound() error {
 	if err != nil {
 		return err
 	}
-	log.Infof("New pot value : %v$", potValue)
+	log.GLogf("New pot value : %v$", potValue)
 
 	return nil
 }

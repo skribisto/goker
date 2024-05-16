@@ -98,9 +98,14 @@ func (sc *ScoreCard) GetBestScoreField() string {
 	return "HighCard"
 }
 
-func Score(board []cards.Card) (*ScoreCard, error) {
+func Score(b []cards.Card) (*ScoreCard, error) {
 	//Create and fill a new ScoreCard
 	sc := new(ScoreCard)
+
+	// do not manipulate (order) the board, only the copy made for ScoreCard
+	var board []cards.Card
+
+	board = append(board, b...)
 
 	// Make a copy of the board
 	sc.Board = &board

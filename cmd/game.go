@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 
+	"github.com/skribisto/goker/internals/common"
 	"github.com/skribisto/goker/internals/plays"
 	"github.com/skribisto/goker/pkg/log"
 )
@@ -10,6 +11,9 @@ import (
 func Execute() {
 	var answer string
 	rageQuit := false
+
+	log.Infof("Current Version of Goker: %v", common.GetVersion())
+
 	p0, err := plays.NewPlayer("Skrib", 0)
 	if err != nil {
 		log.Fatalf("could not instantiate Player0 : %w", err)

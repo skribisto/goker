@@ -13,7 +13,8 @@ RUN mkdir release
 # Add the source code ( see .dockerignore )
 COPY . .
 
-RUN go build -o release/goker-v0.1.1
+#will 'go build' with proper version tag
+RUN releaser/releaser.sh
 
 ##################################################################################
 FROM alpine:3.19 AS goker-image
@@ -37,4 +38,4 @@ COPY --from=goker-builder --chown=1000:1000 /go/src/github.com/skribisto/goker/r
 
 USER goker
 WORKDIR /home/goker
-CMD ./goker-v0.1.1
+CMD ./goker
